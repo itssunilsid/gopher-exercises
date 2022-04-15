@@ -1,6 +1,7 @@
-package urlshort
+package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"gopkg.in/yaml.v2"
@@ -16,7 +17,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 	return func(writer http.ResponseWriter, request *http.Request) {
 		longPath, prs := pathsToUrls[request.RequestURI]
 		if prs {
-			http.Redirect(writer, request, longPath, 301)
+			http.Redirect(writer, request, longPath, http.StatusMovedPermanently)
 		} else {
 			fallback.ServeHTTP(writer, request)
 		}
@@ -43,19 +44,18 @@ type PathAndURL struct {
 	path string `yaml:"path"`
 	url  string `yaml:"url"`
 }
-type Paths struct {
-	urls []PathAndURL `yaml:""`
-}
 
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	t := Paths{}
-	err := yaml.Unmarshal(yml, t)
-	if err == nil {
-		return fallback.ServeHTTP, err
+	var t []PathAndURL
+	err := yaml.Unmarshal(yml, &t)
+	if err != nil {
+		return nil, err
 	}
+	fmt.Println("array is ", t)
 	urlMap := make(map[string]string)
-	for i := 0; i < len(t.urls); i++ {
-		urlMap[t.urls[i].path] = t.urls[i].url
+	for i := 0; i < len(t); i++ {
+		urlMap[t[i].path] = t[i].url
 	}
+	fmt.Println("map", urlMap)
 	return MapHandler(urlMap, fallback), nil
 }
